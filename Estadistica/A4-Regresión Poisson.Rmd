@@ -1,0 +1,39 @@
+---
+title: "A4-Regresión Poisson"
+author: "**A01275465 Carol Arrieta Moreno**"
+date: "2023-10-13"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+*Trabajaremos con el paquete dataset, que incluye la base de datos warpbreaks, que contiene datos del hilo (yarn) para identificar cuáles variables predictoras afectan la ruptura de urdimbre.*
+
+```{r}
+data<-warpbreaks
+head(data,10)
+```
+
+*Histograma del número de rupturas*
+```{r}
+hist(data$breaks, main = "Histograma del número de rupturas", xlab = "Número de rupturas")
+```
+
+*Obtén la media y la varianza*
+
+```{r}
+media <- mean(data$breaks)
+varianza <- var(data$breaks)
+cat("Media:", media, "\n")
+cat("Varianza:", varianza, "\n")
+```
+*Ajusta el modelo de regresión Poisson.*
+
+```{r}
+poisson.model<-glm(breaks ~ wool + tension, data, family = poisson(link = "log"))
+summary(poisson.model)
+```
+*Conclusión*
+
+El modelo que se generó es bueno, el modelo ajustado mejora sobre el modelo residual significativamente, las variables predictoras tienen p-valores muy bajos, el AIC es de 493.06 lo que indica que el modelo tiene buen equilibrio entre ajuste y complejidad.

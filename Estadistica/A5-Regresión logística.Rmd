@@ -1,0 +1,130 @@
+---
+title: "A5-Regresión logística"
+author: "**A01275465 Carol Arrieta Moreno**"
+date: "2023-10-18"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+*Trabaja con el set de datos Weekly, que forma parte de la librería ISLR. Este set de datos contiene información sobre el rendimiento porcentual semanal del índice bursátil S&P 500 entre los años 1990 y 2010. Se busca predecir el tendimiento (positivo o negativo) dependiendo del comportamiento previo de diversas variables de la bolsa bursátil S&P 500.*
+
+*Encuentra un modelo logístico para encontrar el mejor conjunto de predictores que auxilien a clasificar la dirección de cada observación.*
+
+*Se cuenta con un set de datos con 9 variables (8 numéricas y 1 categórica que será nuestra variable respuesta: Direction). Las variables Lag  son los valores de mercado en semanas anteriores y el valor del día actual (Today). La variable volumen (Volume) se refiere al volumen de acciones.*
+
+1. El análisis de datos. Estadísticas descriptivas y coeficiente de correlación entre las variables.
+
+2. Formula un modelo logístico con todas las variables menos la variable "Today". Calcula los intervalos de confianza para las 
+. Detecta variables que influyen y no influyen en el modelo. Interpreta el efecto de la variables en los odds (momios).
+
+3. Divide la base de datos en un conjunto de entrenamiento (datos desde 1990 hasta 2008) y de prueba (2009 y 2010). Ajusta el modelo encontrado.
+
+4. Formula el modelo logístico sólo con las variables significativas en la base de entrenamiento.
+
+5. Representa gráficamente el modelo
+
+6. Evalúa el modelo con las pruebas de verificación correspondientes (Prueba de chi cuadrada, matriz de confusión).
+
+7. Escribe (ecuación), grafica el modelo significativo  e interprétalo en el contexto del problema. Añade posibles  es buen modelo, en qué no lo es, cuánto cambia)
+
+```{r}
+library(ISLR)
+library(tidyverse)
+
+head(Weekly)
+glimpse(Weekly)
+summary(Weekly)
+pairs(Weekly)
+cor(Weekly[, -9])
+attach(Weekly)
+plot(Volume)
+```
+```{r}
+modelo.log.m <- glm(Direction ~ . -Today, data
+= Weekly, family = binomial)
+summary(modelo.log.m)
+contrasts(Direction)
+confint(object = modelo.log.m, level = 0.95)
+
+```
+```{r}
+ggplot(data = Weekly, mapping = aes(x = Direction, y = Lag2)) +
+geom_boxplot(aes(color = Direction)) +
+geom_point(aes(color = Direction)) +
+theme_bw() +
+theme(legend.position = "null")
+```
+```{r}
+# Training: observaciones desde 1990 hasta 2008
+datos.entrenamiento <- (Year < 2009)
+# Test: observaciones de 2009 y 2010
+datos.test <- Weekly[!datos.entrenamiento, ]
+# Verifica:
+nrow(datos.entrenamiento) + nrow(datos.test)
+# Ajuste del modelo logístico con variables significativas
+modelo.log.s <- glm(Direction ~ Lag2, data = Weekly, family = binomial, subset = datos.entrenamiento)
+summary(modelo.log.s)
+```
+```{r}
+# Vector con nuevos valores interpolados en el rango del predictor Lag2:
+nuevos_puntos <- seq(from = min(Weekly$Lag2), to = max(Weekly$Lag2),by = 0.5)
+predicciones <- predict(modelo.log.s, newdata = data.frame(Lag2 = nuevos_puntos),se.fit = TRUE, type = "response")
+
+CI_inferior <- predicciones$fit - 1.96 * predicciones$se.fit
+CI_superior <- predicciones$fit + 1.96 * predicciones$se.fit
+
+datos_curva <- data.frame(Lag2 = nuevos_puntos, probabilidad = predicciones$fit, CI.inferior = CI_inferior, CI.superior = CI_superior)
+```
+
+```{r}
+# Codificación 0,1 de la variable respuesta Direction
+Weekly$Direction <- ifelse(Weekly$Direction == "Down", yes = 0, no = 1)
+ggplot(Weekly, aes(x = Lag2, y = Direction)) +
+geom_point(aes(color = as.factor(Direction)), shape = "I", size = 3) +
+geom_line(data = datos_curva, aes(y = probabilidad), color = "firebrick") +
+geom_line(data = datos_curva, aes(y = CI.superior), linetype = "dashed") +
+geom_line(data = datos_curva, aes(y = CI.inferior), linetype = "dashed") +
+labs(title = "Modelo logístico Direction ~ Lag2", y = "P(Direction = Up |
+Lag2)", x = "Lag2") +
+scale_color_manual(labels = c("Down", "Up"), values = c("blue", "red")) +
+guides(color=guide_legend("Direction")) +
+theme(plot.title = element_text(hjust = 0.5)) +
+theme_bw()
+
+```
+```{r}
+# Chi cuadrada: Se evalúa la significancia del modelo con predictores con respecto al modelo nulo (“Residual deviance” vs “Null deviance”). Si valor p es menor que alfa será significativo.
+anova(modelo.log.s, test ='Chisq')
+```
+```{r}
+# Cálculo de la probabilidad predicha por el modelo con los datos de test
+prob.modelo <- predict(modelo.log.s, newdata = datos.test, type = "response")
+# Vector de elementos “Down”
+pred.modelo <- rep("Down", length(prob.modelo))
+# Sustitución de “Down” por “Up” si la p > 0.5
+pred.modelo[prob.modelo > 0.5] <- "Up"
+Direction.0910 = Direction[!datos.entrenamiento]
+# Matriz de confusión
+matriz.confusion <- table(pred.modelo, Direction.0910)
+matriz.confusion
+```
+```{r}
+library(vcd)
+mosaic(matriz.confusion, shade = T, colorize = T,
+gp = gpar(fill = matrix(c("green3", "red2", "red2", "green3"), 2, 2)))
+mean(pred.modelo == Direction.0910)
+```
+```{r}
+# Prueba de Chi-cuadrada
+chi_cuadrada <- chisq.test(matriz.confusion)
+chi_cuadrada
+```
+
+*Finalmente con la prueba de chi cuadrada se valida que el modelo es significativo, por lo tanto es útil para predecir las direcciones del mercado en el conjunto de prueba. Ecuación: *
+
+\[
+P(\text{{Direction = Up}}) = \frac{1}{1 + e^{-(b_0 + b_1 \times \text{{Lag2}} + b_2 \times \text{{Lag3}} + b_3 \times \text{{Lag4}} + b_4 \times \text{{Lag5}} + b_5 \times \text{{Volume}})}}
+\]
+
+

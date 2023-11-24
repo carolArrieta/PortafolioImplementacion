@@ -1,0 +1,169 @@
+---
+title: "A7"
+author: '**A01275465 Carol Arrieta Moreno**'
+date: '2023-11-02'
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+semana <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+ventas <- c(17, 21, 19, 23, 18, 16, 20, 18, 22, 20, 15, 22)
+```
+
+*Parte 1*
+
+
+Usa los datos de las ventas de gasolina en una estación de servicio para analizar modelos de pronósticos de la serie de tiempo:
+
+Semana	1	2	3	4	5	6	7	8	9	10	11	12
+Galones de gasolina (miles)	17	21	19	23	18	16	20	18	22	20	15	22
+ 
+
+-Utiliza los métodos de suavizamiento:
+-Promedios móviles
+-Promedios móviles ponderados
+-Método de suavizamiento exponencial
+-Crea un programa que te permita evaluar varios valores de alpha en el método de suavizamiento exponencial hasta encontrar el valor de alpha que minimice el CME.
+-Predice cuáles son las ventas de gasolina esperadas para la semana 13 con el mejor método que hayas obtenido. 
+
+
+```{r}
+promedio_movil <- function(ventas, k) {
+  n <- length(ventas)
+  pronostico <- numeric(n - k + 1)
+  for (i in 1:(n - k + 1)) {
+    pronostico[i] <- mean(ventas[i:(i + k - 1)])
+  }
+  return(pronostico)
+}
+
+# Calcular promedio móvil con k=3
+pronostico_ma <- promedio_movil(ventas, 3)
+pronostico_ma
+```
+
+```{r}
+promedio_movil_ponderado <- function(ventas, pesos) {
+  n <- length(ventas)
+  k <- length(pesos)
+  pronostico <- numeric(n - k + 1)
+  for (i in 1:(n - k + 1)) {
+    pronostico[i] <- sum(ventas[i:(i + k - 1)] * pesos)
+  }
+  return(pronostico)
+}
+
+# Calcular promedio móvil ponderado con pesos c(0.2, 0.3, 0.5)
+pesos <- c(0.2, 0.3, 0.5)
+pronostico_map <- promedio_movil_ponderado(ventas, pesos)
+pronostico_map
+```
+
+```{r}
+mejor_alpha <- NULL
+mejor_cme <- Inf
+
+for (alpha in seq(0, 1, 0.01)) {
+  pronostico_exponencial <- numeric(length(ventas))
+  pronostico_exponencial[1] <- ventas[1]
+  for (i in 2:length(ventas)) {
+    pronostico_exponencial[i] <- alpha * ventas[i - 1] + (1 - alpha) * pronostico_exponencial[i - 1]
+  }
+  
+  cme <- sum((ventas - pronostico_exponencial)^2) / length(ventas)
+  
+  if (cme < mejor_cme) {
+    mejor_alpha <- alpha
+    mejor_cme <- cme
+  }
+}
+
+mejor_alpha  # Muestra el mejor valor de alpha que minimiza el CME
+
+
+```
+
+```{r}
+pronostico_exponencial <- numeric(length(ventas) + 1)
+pronostico_exponencial[1] <- ventas[length(ventas)]  # Inicializa el pronóstico con el último valor conocido
+
+for (i in 2:length(pronostico_exponencial)) {
+  pronostico_exponencial[i] <- mejor_alpha * ventas[length(ventas)] + (1 - mejor_alpha) * pronostico_exponencial[i - 1]
+}
+
+pronostico_semana_13 <- pronostico_exponencial[length(pronostico_exponencial)]
+print(pronostico_semana_13)
+```
+El pronosticó de las ventas de gasolina esperadas que resultó fue de 22, el cual al ver los valores que tenemos vemos que esta basantante cerca de estos, por lo que no es un valor fuera de lo común, el mejor alpha encontrado a partir de un ciclo fue de 0.17.
+
+
+*Parte 2*
+
+Se registró el precio de las acciones de una compañia al cierre de cada dia hábil del 24 de agosto al 16 de septiembre. Los datos recopilados son: 
+
+Día - 24/08  25/08   26/08  29/08  30/08  31/08  1/09  2/09  6/09  7/09  8/09  9/09  12/09  13/09  14/09  15/09  16/09
+Precio - 81.32  81.1  80.38  81.34  80.54  80.62  79.54  79.46  81.02  80.98  80.80  81.44  81.48  80.75  80.48  80.01  80.33
+
+Use un promedio movil de tres dias para suavizar la serie de tiempo. Pronostique el precio del cierre del 19/09 que es el siguiente dia de opercaciones.
+Emplee el suavizamiento exponencial con alpha = 0.6 como constante de suavizamiento para suavizar la serie de tiempo. Pronostique el cierre del 19/09 que es el siguiente dia de operaciones.
+Cual de los dos metodos prefiere? ¿Por que?
+
+```{r}
+# Datos
+dias <- c("24/08", "25/08", "26/08", "29/08", "30/08", "31/08", "1/09", "2/09", "6/09", "7/09", "8/09", "9/09", "12/09", "13/09", "14/09", "15/09", "16/09")
+precios <- c(81.32, 81.1, 80.38, 81.34, 80.54, 80.62, 79.54, 79.46, 81.02, 80.98, 80.8, 81.44, 81.48, 80.75, 80.48, 80.01, 80.33)
+
+```
+
+```{r}
+# Calcular el promedio móvil de tres días
+promedio_movil <- numeric(length(precios))
+for (i in 1:(length(precios) - 2)) {
+  promedio_movil[i + 2] <- mean(precios[i:(i + 2)])
+}
+```
+
+
+```{r}
+# Calcular el suavizamiento exponencial con alpha = 0.6
+alpha <- 0.6
+suavizamiento_exponencial <- numeric(length(precios))
+suavizamiento_exponencial[1] <- precios[1]
+for (i in 2:length(precios)) {
+  suavizamiento_exponencial[i] <- alpha * precios[i - 1] + (1 - alpha) * suavizamiento_exponencial[i - 1]
+}
+```
+
+```{r}
+# Ajustar el índice para el promedio móvil
+promedio_movil <- c(NA, NA, promedio_movil)
+# Asegurar que las longitudes sean iguales
+longitud <- min(length(dias), length(precios), length(promedio_movil), length(suavizamiento_exponencial))
+
+# Crear el data.frame
+df <- data.frame(Dia = dias[1:longitud], Precio = precios[1:longitud], PromedioMovil = promedio_movil[1:longitud], SuavizamientoExponencial = suavizamiento_exponencial[1:longitud])
+
+# Imprimir el data.frame
+print(df)
+```
+
+```{r}
+# Calcular la predicción para el día 19/09 usando suavizamiento exponencial
+ultima_observacion <- suavizamiento_exponencial[length(suavizamiento_exponencial)]
+prediccion_19_09 <- alpha * ultima_observacion + (1 - alpha) * precios[length(precios)]
+prediccion_promedio_movil <- mean(precios[(length(precios) - 2):length(precios)])
+
+
+# Agregar la predicción al data.frame
+df <- rbind(df, data.frame(Dia = "19/09", Precio = NA, PromedioMovil = prediccion_promedio_movil, SuavizamientoExponencial = prediccion_19_09))
+
+# Mostrar el data.frame con la predicción
+print(df)
+
+```
+
+El resultado de la predicción para 19 de septiembre es de 80.2733 en promedio movil, y realizandolo con suavizamiento exponencial es de 80.30016, en general ambas predicciones en todos los tiempos varian mucho, en ocasiones promedio movil es el que más se acerca y en otras ocasiones es suavizamiento exponencial, sin embargo la que mas cerca está todo el tiempo de el precio real es suavizamiento exponencial.

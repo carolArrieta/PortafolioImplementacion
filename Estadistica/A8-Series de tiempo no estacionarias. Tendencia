@@ -1,0 +1,158 @@
+---
+title: "A8-Series de tiempo no estacionarias. Tendencia"
+author: "**A01275465 Carol Arrieta Moreno**"
+date: "2023-11-17"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+# Crear el dataframe con los datos proporcionados
+data <- data.frame(
+  Año = rep(1:4, each = 4), # Valores de los años
+  Trimestre = rep(1:4, 4),  # Valores de los trimestres
+  Ventas = c(4.8, 4.1, 6.0, 6.5, 5.8, 5.2, 6.8, 7.4, 6.0, 5.6, 7.5, 7.8, 6.3, 5.9, 8.0, 8.4) # Ventas
+)
+
+```
+
+```{r}
+# Gráfico de dispersión
+ggplot(data, aes(x = Trimestre, y = Ventas)) +
+  geom_point() +
+  labs(title = "Ventas por Trimestre", x = "Trimestre", y = "Ventas (miles)") +
+  theme_minimal()
+
+```
+```{r}
+# Gráfico de línea para visualizar la serie temporal de ventas
+ggplot(data, aes(x = Trimestre, y = Ventas, group = Año, color = factor(Año))) +
+  geom_line() +
+  labs(title = "Ventas Trimestrales por Año", x = "Trimestre", y = "Ventas (miles)") +
+  theme_minimal()
+
+```
+
+
+```{r}
+
+# Convertir los datos a una serie temporal
+ts_data <- ts(data$Ventas, frequency = 4)  # 4 trimestres por año
+
+# Realizar la descomposición de la serie temporal
+decomposed_ts <- decompose(ts_data)
+
+# Gráfico de la descomposición
+plot(decomposed_ts)
+
+```
+```{r}
+tiempo <- 1:length(data$Ventas)
+
+# Crear un dataframe con los datos
+datos <- data.frame(tiempo <- tiempo, data$Ventas <- data$Ventas)
+
+# Realizar la regresión lineal de las ventas desestacionalizadas vs tiempo
+modelo <- lm(data$Ventas ~ tiempo, data = datos)
+
+# Resumen del modelo
+summary(modelo)
+```
+
+```{r}
+
+
+# Obtener la línea de regresión
+linea_regresion <- data.frame(tiempo = tiempo, ventas_pred = predict(modelo))
+
+# Gráfico de las ventas desestacionalizadas y la línea de regresión
+library(ggplot2)
+
+ggplot(datos, aes(x = tiempo, y = data$Ventas)) +
+  geom_point() +  # Puntos de las ventas desestacionalizadas
+  geom_line(data = linea_regresion, aes(x = tiempo, y = ventas_pred), color = "red") +  # Línea de regresión
+  labs(title = "Regresión lineal de ventas desestacionalizadas vs tiempo", x = "Tiempo", y = "Ventas desestacionalizadas")
+
+```
+```{r}
+# Resumen del modelo
+summary(modelo)
+```
+```{r}
+# Análisis de la varianza (ANOVA)
+anova(modelo)
+
+```
+```{r}
+# Gráficos de los residuos
+plot(modelo, which = c(1, 2))  # 1 para residuos vs tiempo, 2 para residuos vs valores ajustados
+
+```
+```{r}
+# Prueba de normalidad de los residuos
+shapiro.test(residuals(modelo))
+
+```
+
+```{r}
+# Suponiendo que ya tienes el modelo lineal ajustado y los datos desestacionalizados
+ventas_desest_pred <- predict(modelo)  # Obtener las predicciones del modelo
+
+# Calcular el Error Cuadrático Medio (CME)
+CME <- sum((data$Ventas - ventas_desest_pred)^2) / length(data$Ventas)
+
+# Calcular el Error Porcentual Absoluto Medio (EPAM)
+EPAM <- mean(abs((data$Ventas - ventas_desest_pred) / data$Ventas)) * 100
+
+# Mostrar los resultados
+print(paste("CME:", CME))
+print(paste("EPAM:", EPAM))
+
+```
+```{r}
+# Suponiendo que ya tienes los datos originales y las predicciones del modelo
+# datos contiene la variable de tiempo 'tiempo' y las ventas desestacionalizadas 'ventas_desest'
+
+# Crear un dataframe con las ventas reales y las predicciones
+df_predicciones <- data.frame(tiempo = datos$tiempo, Ventas = data$Ventas, Predicciones = ventas_desest_pred)
+
+# Gráfico de los valores reales de las ventas y las predicciones vs el tiempo
+library(ggplot2)
+
+ggplot(df_predicciones, aes(x = tiempo)) +
+  geom_line(aes(y = Ventas, color = "Valores reales")) +
+  geom_line(aes(y = Predicciones, color = "Predicciones")) +
+  labs(title = "Valores reales vs Predicciones", x = "Tiempo", y = "Ventas desestacionalizadas") +
+  scale_color_manual(values = c("Valores reales" = "blue", "Predicciones" = "red")) +
+  theme_minimal()
+
+```
+
+```{r}
+# Suponiendo que ya tienes el modelo lineal ajustado y datos previos
+
+# Último trimestre del último año en tus datos
+ultimo_trimestre <- tail(datos$tiempo, 1)
+
+# Crear una secuencia de tiempo para el próximo año (suponiendo que continúas con la secuencia)
+nuevo_tiempo <- seq(ultimo_trimestre + 1, ultimo_trimestre + 4, by = 1)  # Suponiendo 4 trimestres por año
+
+# Realizar las predicciones para el próximo año
+predicciones_siguiente_anio <- predict(modelo, newdata = data.frame(tiempo = nuevo_tiempo))
+
+# Mostrar las predicciones
+print(predicciones_siguiente_anio)
+
+```
+
+*Comclusión*
+
+Los valores dados van variando, aumentan y disminuyen sin perder el progreso de manera lineal, por lo que el modelo generado nos da buenos resultados en cuanto a los valores en los que se encontraran las ventas en cada año, aunque es complicado que nos brinde el número exacto con una precisión muy alta, el modelo es capaz de entender que la tendencia aumenta, sin embargo los valores en ocasiones disminuyen y en otras ocasiones aumentan, por lo que la precisión no es tan exacta pero el modelo es adecuado y yo diria que si se puede obtener un mejor modelo con usos de diferentes tecnicas, pero en cuanto a regresión lineal creo que es el mejor modelo que se pudo obtener
+
+
